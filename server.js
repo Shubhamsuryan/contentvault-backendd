@@ -23,7 +23,9 @@ const buyerSchema = new mongoose.Schema({
 
 const Buyer = mongoose.model("Buyer", buyerSchema);
 
+
 const app = express();
+app.set("trust proxy", 1);
 app.use(
   cors({
     origin: [
@@ -128,7 +130,11 @@ if (!existingBuyer) {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+  await transporter.sendMail(mailOptions);
+} catch (err) {
+  console.log("Email failed but continuing:", err);
+}
 
     res.json({ success: true });
 
