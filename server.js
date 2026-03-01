@@ -130,13 +130,13 @@ if (!existingBuyer) {
       `,
     };
 
-    try {
-  await transporter.sendMail(mailOptions);
-} catch (err) {
-  console.log("Email failed but continuing:", err);
-}
+  res.json({ success: true });
 
-    res.json({ success: true });
+    transporter.sendMail(mailOptions)
+  .then(() => console.log("Email sent"))
+  .catch(err => console.log("Email failed:", err));
+
+
 
   } catch (error) {
     console.error("Verify Payment Error:", error);
