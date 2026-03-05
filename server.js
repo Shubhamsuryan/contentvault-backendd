@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -59,15 +59,8 @@ const razorpay = new Razorpay({
 key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  },
-});
+// Initialize Resend (uses RESEND_API_KEY from environment)
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Create Order
 app.post("/create-order", paymentLimiter, async (req, res) => {
@@ -136,9 +129,15 @@ if (!existingBuyer) {
 
   res.json({ success: true });
 
-    transporter.sendMail(mailOptions)
-  .then(() => console.log("Email sent"))
-  .catch(err => console.log("Email failed:", err));
+    // Send email via Resend (fire-and-forget; we already responded)
+    resend.emails.send({
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      html: mailOptions.html,
+    })
+    .then(() => console.log("Email sent via Resend"))
+    .catch(err => console.log("Resend email failed:", err));
 
 
 
