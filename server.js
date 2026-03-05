@@ -31,6 +31,8 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://contentvault-frontend.vercel.app",
+      "https://www.contentvaultpro.online",
+      "https://contentvaultpro.online"
     ],
   })
 );
