@@ -116,7 +116,7 @@ if (!existingBuyer) {
 
     // Send confirmation email
     const mailOptions = {
-      from: process.env.GMAIL_USER,
+      from: "ContentVault Pro <noreply@contentvaultpro.online>",
       to: email,
       subject: "Payment Received - ContentVault Pro",
       html: `
