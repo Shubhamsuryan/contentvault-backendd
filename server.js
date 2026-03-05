@@ -116,15 +116,30 @@ if (!existingBuyer) {
 
     // Send confirmation email
     const mailOptions = {
-      from: "ContentVault Pro <noreply@contentvaultpro.online>",
+      from: "ContentVault Pro <support@contentvaultpro.online>",
       to: email,
       subject: "Payment Received - ContentVault Pro",
       html: `
-        <h2>Payment Successful 🎉</h2>
-        <p>Thank you for purchasing ContentVault Pro.</p>
-        <p>Drive access will be granted shortly.</p>
-        <p><strong>Email:</strong> ${email}</p>
-      `,
+<h2>Payment Successful 🎉</h2>
+
+<p>Hi there,</p>
+
+<p>Thank you for purchasing <b>ContentVault Pro</b>.</p>
+
+<p>Your payment has been received successfully.</p>
+
+<p>Our team will grant Google Drive access shortly to this email:</p>
+
+<p><b>${email}</b></p>
+
+<p>If you have any questions, feel free to contact us.</p>
+
+<br/>
+
+<p>Best regards</p>
+<p><b>ContentVault Pro Team</b></p>
+<p>support@contentvaultpro.online</p>
+`,
     };
 
   res.json({ success: true });
