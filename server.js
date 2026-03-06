@@ -15,8 +15,16 @@ mongoose
 
 const buyerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
+
+  // main purchase
   paymentId: String,
   orderId: String,
+
+  // upsell purchase
+  upsellPaymentId: { type: String, default: null },
+  upsellOrderId: { type: String, default: null },
+  upsellPurchased: { type: Boolean, default: false },
+
   accessGranted: { type: Boolean, default: false },
   date: { type: Date, default: Date.now },
 });
@@ -160,6 +168,37 @@ if (!existingBuyer) {
     console.error("Verify Payment Error:", error);
     res.status(500).json({ success: false, error: "Server error" });
   }
+});
+
+app.post("/verify-upsell", async (req, res) => {
+
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    email,
+  } = req.body;
+
+  const generated_signature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(razorpay_order_id + "|" + razorpay_payment_id)
+    .digest("hex");
+
+  if (generated_signature !== razorpay_signature) {
+    return res.status(400).json({ success: false });
+  }
+
+  await Buyer.updateOne(
+    { email },
+    {
+      upsellPaymentId: razorpay_payment_id,
+      upsellOrderId: razorpay_order_id,
+      upsellPurchased: true,
+    }
+  );
+
+  res.json({ success: true });
+
 });
 
 app.get("/admin/buyers", async (req, res) => {
