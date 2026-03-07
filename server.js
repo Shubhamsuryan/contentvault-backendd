@@ -88,7 +88,7 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
       returnUrl = `https://www.contentvaultpro.online/success?order_id=${orderId}&email=${email}`;
     } else {
       // main payment finished → go to upsell
-      returnUrl = `https://www.contentvaultpro.online/upsell?order_id=${orderId}&email=${email}&phone=${phone}&city=${city}&name=${name}`;
+      returnUrl = `https://www.contentvaultpro.online/upsell?order_id=${orderId}&email=${email}&phone=${phone}&city=${city}`;
     }
 
     const response = await axios.post(
