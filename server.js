@@ -66,7 +66,7 @@ app.use(generalLimiter);
 
 // Cashfree.XClientId = process.env.CASHFREE_APP_ID;
 // Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY;
-// Cashfree.XEnvironment = CFEnvironment.SANDBOX;// test mode
+// Cashfree.XEnvironment = CFEnvironment.api;// test mode
 
 // Initialize Resend (uses RESEND_API_KEY from environment)
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -85,14 +85,14 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
 
     if (isUpsell) {
       // upsell payment finished → go to success
-      returnUrl = `https://contentvaultpro.online/success?order_id=${orderId}&email=${email}`;
+      returnUrl = `https://www.contentvaultpro.online/success?order_id=${orderId}&email=${email}`;
     } else {
       // main payment finished → go to upsell
-      returnUrl = `https://contentvaultpro.online/upsell?order_id=${orderId}&email=${email}&phone=${phone}&city=${city}&name=${name}`;
+      returnUrl = `https://www.contentvaultpro.online/upsell?order_id=${orderId}&email=${email}&phone=${phone}&city=${city}&name=${name}`;
     }
 
     const response = await axios.post(
-      "https://sandbox.cashfree.com/pg/orders",
+      "https://api.cashfree.com/pg/orders",
       {
         order_id: orderId,
         order_amount: amount,
@@ -139,7 +139,7 @@ app.get("/verify-payment", async (req, res) => {
   const { order_id, email } = req.query;
 
 const response = await axios.get(
-  `https://sandbox.cashfree.com/pg/orders/${order_id}`,
+  `https://api.cashfree.com/pg/orders/${order_id}`,
   {
     headers: {
       "x-client-id": process.env.CASHFREE_APP_ID,
@@ -186,7 +186,7 @@ app.post("/verify-upsell", async (req, res) => {
     const { order_id, email } = req.body;
 
     const response = await axios.get(
-      `https://sandbox.cashfree.com/pg/orders/${order_id}`,
+      `https://api.cashfree.com/pg/orders/${order_id}`,
       {
         headers: {
           "x-client-id": process.env.CASHFREE_APP_ID,
