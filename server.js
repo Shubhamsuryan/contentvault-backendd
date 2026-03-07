@@ -1,10 +1,9 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const express = require("express");
-const Razorpay = require("razorpay");
-const crypto = require("crypto");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
+
 
 const { Resend } = require("resend");
 
@@ -14,8 +13,11 @@ mongoose
   .catch((err) => console.log("MongoDB error:", err));
 
 const buyerSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
 
+  name: String,
+  email: { type: String, required: true, unique: true },
+  phone: String,
+  city: String,
   // main purchase
   paymentId: String,
   orderId: String,
@@ -62,142 +64,165 @@ const paymentLimiter = rateLimit({
 
 app.use(generalLimiter);
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Cashfree.XClientId = process.env.CASHFREE_APP_ID;
+// Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY;
+// Cashfree.XEnvironment = CFEnvironment.SANDBOX;// test mode
 
 // Initialize Resend (uses RESEND_API_KEY from environment)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Create Order
+const axios = require("axios");
+
 app.post("/create-order", paymentLimiter, async (req, res) => {
+
   try {
-    const { amount } = req.body;
 
-    const options = {
-      amount: amount * 100,
-      currency: "INR",
-      receipt: "receipt_order_" + Date.now(),
-    };
+    const { amount, email, name, phone, city, isUpsell } = req.body;
+    const orderId = "order_" + Date.now();
 
-    const order = await razorpay.orders.create(options);
-    res.json(order);
-  } catch (err) {
-    res.status(500).send("Error creating order");
+    let returnUrl;
+
+    if (isUpsell) {
+      // upsell payment finished → go to success
+      returnUrl = `http://localhost:5173/success?order_id=${orderId}&email=${email}`;
+    } else {
+      // main payment finished → go to upsell
+      returnUrl = `http://localhost:5173/upsell?order_id=${orderId}&email=${email}&phone=${phone}&city=${city}&name=${name}`;
+    }
+
+    const response = await axios.post(
+      "https://sandbox.cashfree.com/pg/orders",
+      {
+        order_id: orderId,
+        order_amount: amount,
+        order_currency: "INR",
+
+        customer_details: {
+          customer_id: name.replace(/\s/g, "_"),
+          customer_email: email,
+          customer_phone: phone
+        },
+
+        order_meta: {
+          return_url: returnUrl,
+          city: city,
+          name: name,
+          phone: phone
+        }
+
+      },
+      {
+        headers: {
+          "x-client-id": process.env.CASHFREE_APP_ID,
+          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+          "x-api-version": "2023-08-01",
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    res.json(response.data);
+
+  } catch (error) {
+
+    console.error("Cashfree error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Order creation failed" });
+
   }
+
 });
 
 // Verify Payment
-app.post("/verify-payment", paymentLimiter, async (req, res) => {
-  try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      email,
-    } = req.body;
+app.get("/verify-payment", async (req, res) => {
 
-    const generated_signature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(razorpay_order_id + "|" + razorpay_payment_id)
-      .digest("hex");
+  const { order_id, email } = req.query;
 
-    if (generated_signature !== razorpay_signature) {
-      return res.status(400).json({ success: false });
+const response = await axios.get(
+  `https://sandbox.cashfree.com/pg/orders/${order_id}`,
+  {
+    headers: {
+      "x-client-id": process.env.CASHFREE_APP_ID,
+      "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+      "x-api-version": "2023-08-01"
     }
+  }
+);
 
-    // Save buyer to MongoDB
+  console.log("VERIFY PAYMENT API HIT:", order_id, email);
+
+  if (response.data.order_status === "PAID") {
+
+    const order = response.data;
+
     const existingBuyer = await Buyer.findOne({ email });
 
-if (!existingBuyer) {
-  await Buyer.create({
-    email,
-    paymentId: razorpay_payment_id,
-    orderId: razorpay_order_id,
-  });
-} else {
-  console.log("Duplicate purchase attempt:", email);
-}
+    if (!existingBuyer) {
 
-    console.log("New Buyer saved:", email);
+      await Buyer.create({
+  name: order.order_meta?.name || order.customer_details.customer_id,
+  email: order.customer_details.customer_email,
+  phone: order.order_meta?.phone || order.customer_details.customer_phone,
+  city: order.order_meta?.city || "",
+  paymentId: order.cf_order_id,
+  orderId: order.order_id
+});
+    }
 
-    // Send confirmation email
-    const mailOptions = {
-      from: "ContentVault Pro <support@contentvaultpro.online>",
-      to: email,
-      subject: "Payment Received - ContentVault Pro",
-      html: `
-<h2>Payment Successful 🎉</h2>
+    res.json({ success: true });
 
-<p>Hi there,</p>
+  } else {
 
-<p>Thank you for purchasing <b>ContentVault Pro</b>.</p>
+    res.json({ success: false });
 
-<p>Your payment has been received successfully.</p>
-
-<p>Our team will grant Google Drive access shortly to this email:</p>
-
-<p><b>${email}</b></p>
-
-<p>If you have any questions, feel free to contact us.</p>
-
-<br/>
-
-<p>Best regards</p>
-<p><b>ContentVault Pro Team</b></p>
-<p>support@contentvaultpro.online</p>
-`,
-    };
-
-  res.json({ success: true });
-
-    // Send email via Resend (fire-and-forget; we already responded)
-    resend.emails.send({
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject,
-      html: mailOptions.html,
-    })
-    .then(() => console.log("Email sent via Resend"))
-    .catch(err => console.log("Resend email failed:", err));
-
-
-
-  } catch (error) {
-    console.error("Verify Payment Error:", error);
-    res.status(500).json({ success: false, error: "Server error" });
   }
+
 });
 
 app.post("/verify-upsell", async (req, res) => {
 
-  const {
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-    email,
-  } = req.body;
+  try {
 
-  const generated_signature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(razorpay_order_id + "|" + razorpay_payment_id)
-    .digest("hex");
+    const { order_id, email } = req.body;
 
-  if (generated_signature !== razorpay_signature) {
-    return res.status(400).json({ success: false });
-  }
+    const response = await axios.get(
+      `https://sandbox.cashfree.com/pg/orders/${order_id}`,
+      {
+        headers: {
+          "x-client-id": process.env.CASHFREE_APP_ID,
+          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+          "x-api-version": "2023-08-01"
+        }
+      }
+    );
 
-  await Buyer.updateOne(
-    { email },
-    {
-      upsellPaymentId: razorpay_payment_id,
-      upsellOrderId: razorpay_order_id,
-      upsellPurchased: true,
+    const order = response.data;
+
+    if (order.order_status === "PAID") {
+
+      await Buyer.updateOne(
+        { email },
+        {
+          upsellPaymentId: order.cf_order_id,
+          upsellOrderId: order.order_id,
+          upsellPurchased: true
+        }
+      );
+
+      return res.json({ success: true });
+
+    } else {
+
+      return res.json({ success: false });
+
     }
-  );
 
-  res.json({ success: true });
+  } catch (error) {
+
+    console.error("Upsell verify error:", error.response?.data || error.message);
+    res.status(500).json({ success: false });
+
+  }
 
 });
 
@@ -247,10 +272,10 @@ app.get("/admin/export", async (req, res) => {
 
     const buyers = await Buyer.find().sort({ date: -1 });
 
-    let csv = "Email,Payment ID,Order ID,Date\n";
+    let csv = "Name,Email,Phone,City,Payment ID,Order ID,Upsell,Date\n";
 
     buyers.forEach((buyer) => {
-      csv += `${buyer.email},${buyer.paymentId},${buyer.orderId},${buyer.date}\n`;
+      csv += `${buyer.name},${buyer.email},${buyer.phone},${buyer.city},${buyer.paymentId},${buyer.orderId},${buyer.upsellPurchased ? "Yes" : "No"},${buyer.date}\n`;
     });
 
     res.header("Content-Type", "text/csv");
