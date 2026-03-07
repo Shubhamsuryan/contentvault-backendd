@@ -163,7 +163,7 @@ const response = await axios.get(
   name: order.order_meta?.name || order.customer_details.customer_id,
   email: order.customer_details.customer_email,
   phone: order.order_meta?.phone || order.customer_details.customer_phone,
-  city: order.order_meta?.city || "",
+  city: order.order_meta?.city || order.customer_details?.customer_city || "",
   paymentId: order.cf_order_id,
   orderId: order.order_id
 });
