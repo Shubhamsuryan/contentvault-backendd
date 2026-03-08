@@ -92,7 +92,7 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
     }
 
     const response = await axios.post(
-      "https://sandbox.cashfree.com/pg/orders",
+      "https://api.cashfree.com/pg/orders",
       {
         order_id: orderId,
         order_amount: amount,
@@ -136,10 +136,10 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
 // Verify Payment
 app.get("/verify-payment", async (req, res) => {
 
- const { order_id, email, city, phone, name } = req.query;
+ const { order_id, email, city} = req.query;
 
 const response = await axios.get(
-  `https://sandbox.cashfree.com/pg/orders/${order_id}`,
+  `https://api.cashfree.com/pg/orders/${order_id}`,
   {
     headers: {
       "x-client-id": process.env.CASHFREE_APP_ID,
@@ -186,7 +186,7 @@ app.post("/verify-upsell", async (req, res) => {
     const { order_id, email } = req.body;
 
     const response = await axios.get(
-      `https://sandbox.cashfree.com/pg/orders/${order_id}`,
+      `https://api.cashfree.com/pg/orders/${order_id}`,
       {
         headers: {
           "x-client-id": process.env.CASHFREE_APP_ID,
@@ -330,7 +330,7 @@ app.post("/cashfree-webhook", async (req, res) => {
           name: order.customer_details.customer_id,
           email: order.customer_details.customer_email,
           phone: order.customer_details.customer_phone,
-          city: "",
+          city: order.order_meta?.city || "",
           paymentId: order.cf_order_id,
           orderId: order.order_id
         });
@@ -342,6 +342,7 @@ app.post("/cashfree-webhook", async (req, res) => {
     }
 
     res.status(200).send("OK");
+    console.log("Webhook received:", req.body);
 
   } catch (error) {
 
