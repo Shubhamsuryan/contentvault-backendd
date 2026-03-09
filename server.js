@@ -14,10 +14,10 @@ mongoose
 
 const buyerSchema = new mongoose.Schema({
 
-  name: String,
+  // name: String,
   email: { type: String, required: true, unique: true },
   phone: String,
-  city: String,
+  // city: String,
   // main purchase
   paymentId: String,
   orderId: String,
@@ -92,7 +92,7 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
 
   try {
 
-    const { amount, email, name, phone, city, isUpsell } = req.body;
+    const { amount, email, phone, isUpsell } = req.body;
     const orderId = "order_" + Date.now();
 
     let returnUrl;
@@ -102,7 +102,7 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
       returnUrl = `https://www.contentvaultpro.online/success?order_id=${orderId}&email=${email}`;
     } else {
       // main payment finished → go to upsell
-      returnUrl = `https://www.contentvaultpro.online/upsell?order_id=${orderId}&email=${email}&phone=${phone}&city=${city}`;
+      returnUrl = `https://www.contentvaultpro.online/upsell?order_id=${orderId}&email=${email}&phone=${phone}`;
     }
 
     const response = await axios.post(
@@ -113,15 +113,15 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
         order_currency: "INR",
 
         customer_details: {
-          customer_id: name.replace(/\s/g, "_"),
+          // customer_id: name.replace(/\s/g, "_"),
           customer_email: email,
           customer_phone: phone
         },
 
         order_meta: {
           return_url: returnUrl,
-          city: city,
-          name: name,
+          // city: city,
+          // name: name,
           phone: phone
         }
 
@@ -150,7 +150,7 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
 // Verify Payment
 app.get("/verify-payment", async (req, res) => {
 
- const { order_id, email, city} = req.query;
+ const { order_id, email } = req.query;
 
 const response = await axios.get(
   `https://api.cashfree.com/pg/orders/${order_id}`,
@@ -174,16 +174,16 @@ const response = await axios.get(
     if (!existingBuyer) {
 
       await Buyer.create({
-  name: order.order_meta?.name || order.customer_details.customer_id,
+  // name: order.order_meta?.name || order.customer_details.customer_id,
   email: order.customer_details.customer_email,
   phone: order.order_meta?.phone || order.customer_details.customer_phone,
-  city: city || "",
+  // city: city || "",
   paymentId: order.cf_order_id,
   orderId: order.order_id
 });
 
 await resend.emails.send({
-  from: "ContentVault <noreply@contentvaultpro.online>",
+  from: "ContentVault <support@contentvaultpro.online>",
   to: email,
   subject: "Payment Received - ContentVault Pro",
   html: `
@@ -297,10 +297,10 @@ app.get("/admin/export", async (req, res) => {
 
     const buyers = await Buyer.find().sort({ date: -1 });
 
-    let csv = "Name,Email,Phone,City,Payment ID,Order ID,Upsell,Date\n";
+    let csv = "Email,Phone,Payment ID,Order ID,Upsell,Date\n";
 
     buyers.forEach((buyer) => {
-      csv += `${buyer.name},${buyer.email},${buyer.phone},${buyer.city},${buyer.paymentId},${buyer.orderId},${buyer.upsellPurchased ? "Yes" : "No"},${buyer.date}\n`;
+      csv += `${buyer.email},${buyer.phone},${buyer.paymentId},${buyer.orderId},${buyer.upsellPurchased ? "Yes" : "No"},${buyer.date}\n`;
     });
 
     res.header("Content-Type", "text/csv");
@@ -352,10 +352,10 @@ app.post("/cashfree-webhook", async (req, res) => {
       if (!existingBuyer) {
 
         await Buyer.create({
-          name: order.customer_details.customer_id,
+          // name: order.customer_details.customer_id,
           email: order.customer_details.customer_email,
           phone: order.customer_details.customer_phone,
-          city: order.order_meta?.city || "",
+           // city: order.order_meta?.city || "",
           paymentId: order.cf_order_id,
           orderId: order.order_id
         });
