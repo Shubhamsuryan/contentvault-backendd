@@ -113,7 +113,7 @@ app.post("/create-order", paymentLimiter, async (req, res) => {
         order_currency: "INR",
 
         customer_details: {
-          // customer_id: name.replace(/\s/g, "_"),
+          customer_id: phone || email, // use phone as ID if available, otherwise email
           customer_email: email,
           customer_phone: phone
         },
