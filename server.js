@@ -44,15 +44,21 @@ app.use(
       "https://www.contentvaultpro.online",
       "https://contentvaultpro.online"
     ],
+    methods: ["GET","POST","PUT","DELETE","HEAD"]
   })
 );
 app.use(express.json());
-
+app.use((req, res, next) => {
+  if (req.path === "/health") return next();
+  generalLimiter(req, res, next);
+});
 // General limiter (all routes)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // 100 requests per IP
   message: "Too many requests, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
 // Strict limiter for payment routes
@@ -73,6 +79,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Create Order
 const axios = require("axios");
+
+app.get("/health", (req, res) => {
+  res.status(200).send("Server is awake");
+});
+
+app.get("/", (req, res) => {
+  res.send("ContentVault API running");
+});
 
 app.post("/create-order", paymentLimiter, async (req, res) => {
 
