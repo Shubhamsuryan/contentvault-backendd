@@ -181,6 +181,17 @@ const response = await axios.get(
   paymentId: order.cf_order_id,
   orderId: order.order_id
 });
+
+await resend.emails.send({
+  from: "ContentVault <noreply@contentvaultpro.online>",
+  to: email,
+  subject: "Payment Received - ContentVault Pro",
+  html: `
+    <h2>Payment Successful 🎉</h2>
+    <p>Thank you for purchasing ContentVault Pro.</p>
+    <p>You will receive access instructions shortly.</p>
+  `
+});
     }
 
     res.json({ success: true });
@@ -366,6 +377,20 @@ app.post("/cashfree-webhook", async (req, res) => {
   }
 
 });
+
+
+// app.get("/test-email", async (req, res) => {
+
+//   await resend.emails.send({
+//     from: "ContentVault <noreply@contentvaultpro.online>",
+//     to: "shubhamrajput2565@gmail.com",
+//     subject: "Test Email",
+//     html: "<p>Resend is working</p>"
+//   });
+
+//   res.send("Email sent");
+
+// });
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
